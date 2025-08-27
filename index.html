@@ -2,11 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="description" content="Responsive Image Gallery with Grouping">
+  <meta name="description" content="Responsive Secure Image Gallery">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Responsive Image Gallery</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+  <title>Image Gallery</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #f4f4f4;
@@ -22,10 +21,6 @@
         --btn-bg: #1e88e5;
         --btn-hover: #1565c0;
       }
-    }
-
-    * {
-      box-sizing: border-box;
     }
 
     body {
@@ -124,7 +119,7 @@
 </head>
 <body>
 
-<h1>Responsive Image Gallery</h1>
+<h1>Secure Image Gallery</h1>
 
 <div id="controls">
   <input type="text" id="search" placeholder="Search groups...">
@@ -139,10 +134,6 @@
 </div>
 
 <script>
-  const username = "mobile-doctor-store";
-  const repo = "image-site-004";
-  const folder = "images";
-
   const gallery = document.getElementById("gallery");
   const groupButtonsContainer = document.getElementById("group-buttons");
   const searchInput = document.getElementById("search");
@@ -153,9 +144,24 @@
   let groups = {};
   let allImages = [];
 
-  function getPrefix(name) {
-    const match = name.match(/^[a-zA-Z]+/);
-    return match ? match[0].toLowerCase() : "others";
+  function sanitizeInput(str) {
+    return str.replace(/[<>\/"'&]/g, "");
+  }
+
+  async function fetchFolderContents(config, path = config.folder, groupName = "") {
+    const res = await fetch(`https://api.github.com/repos/${config.username}/${config.repo}/contents/${path}`);
+    const data = await res.json();
+
+    for (const item of data) {
+      if (item.type === "file" && item.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+        const group = groupName || "others";
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(item);
+        allImages.push(item);
+      } else if (item.type === "dir") {
+        await fetchFolderContents(config, `${path}/${item.name}`, item.name.toLowerCase());
+      }
+    }
   }
 
   function clearGallery() {
@@ -165,15 +171,15 @@
   function showImages(images) {
     clearGallery();
     if (images.length === 0) {
-      gallery.innerHTML = "<p>No images found.</p>";
+      gallery.textContent = "No images found.";
       return;
     }
 
     images.forEach(file => {
       const img = document.createElement("img");
       img.src = file.download_url;
-      img.alt = file.name;
-      img.title = file.name;
+      img.alt = sanitizeInput(file.name);
+      img.title = sanitizeInput(file.name);
       img.loading = "lazy";
       img.onclick = () => {
         lightbox.style.display = "flex";
@@ -186,60 +192,59 @@
 
   function createGroupButtons() {
     groupButtonsContainer.innerHTML = "";
-    Object.keys(groups).forEach(prefix => {
+    Object.keys(groups).forEach(group => {
       const btn = document.createElement("button");
       btn.className = "group-btn";
-      btn.textContent = `${prefix} (${groups[prefix].length})`;
-      btn.onclick = () => showImages(groups[prefix]);
+      btn.textContent = `${group} (${groups[group].length})`;
+      btn.onclick = () => showImages(groups[group]);
       groupButtonsContainer.appendChild(btn);
     });
   }
 
   function filterGroups(term) {
+    const safeTerm = sanitizeInput(term.toLowerCase());
     const filtered = {};
-    Object.keys(groups).forEach(prefix => {
-      if (prefix.includes(term.toLowerCase())) {
-        filtered[prefix] = groups[prefix];
+    Object.keys(groups).forEach(group => {
+      if (group.includes(safeTerm)) {
+        filtered[group] = groups[group];
       }
     });
+
     groupButtonsContainer.innerHTML = "";
-    Object.keys(filtered).forEach(prefix => {
+    Object.keys(filtered).forEach(group => {
       const btn = document.createElement("button");
       btn.className = "group-btn";
-      btn.textContent = `${prefix} (${filtered[prefix].length})`;
-      btn.onclick = () => showImages(filtered[prefix]);
+      btn.textContent = `${group} (${filtered[group].length})`;
+      btn.onclick = () => showImages(filtered[group]);
       groupButtonsContainer.appendChild(btn);
     });
   }
 
   allBtn.onclick = () => showImages(allImages);
-  searchInput.addEventListener("input", () => filterGroups(searchInput.value));
+  searchInput.addEventListener("input", () => {
+    const input = sanitizeInput(searchInput.value);
+    filterGroups(input);
+  });
+
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") lightbox.style.display = "none";
   });
 
-  fetch(`https://api.github.com/repos/${username}/${repo}/contents/${folder}`)
-    .then(res => res.json())
-    .then(files => {
-      const imageFiles = files.filter(file =>
-        file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-      );
+  async function init() {
+    try {
+      const configRes = await fetch("config.json");
+      const config = await configRes.json();
 
-      allImages = imageFiles;
-
-      imageFiles.forEach(file => {
-        const prefix = getPrefix(file.name);
-        if (!groups[prefix]) groups[prefix] = [];
-        groups[prefix].push(file);
-      });
-
+      await fetchFolderContents(config);
       createGroupButtons();
       gallery.innerHTML = "<p>Select a group or click 'Show All'.</p>";
-    })
-    .catch(err => {
-      gallery.innerHTML = "<p>Error loading images.</p>";
+    } catch (err) {
+      gallery.textContent = "Error loading images.";
       console.error(err);
-    });
+    }
+  }
+
+  init();
 </script>
 
 </body>
