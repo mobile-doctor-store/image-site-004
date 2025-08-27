@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="description" content="Public image gallery">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Image Gallery</title>
+</head>
+<body>
+  <h1>Image Gallery</h1>
+  <div id="gallery"></div>
+
+  <script>
+    fetch('images.json')
+      .then(response => response.json())
+      .then(data => {
+        const gallery = document.getElementById('gallery');
+        data.forEach(image => {
+          const img = document.createElement('img');
+          img.src = image.url;
+          img.alt = image.alt;
+          img.title = image.title;
+          img.style.width = "300px";
+          img.style.margin = "10px";
+          gallery.appendChild(img);
+        });
+      });
+  </script>
+</body>
+</html>
