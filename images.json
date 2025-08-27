@@ -1,0 +1,12 @@
+[
+  {
+    "title": "Sunset Beach",
+    "url": "https://raw.githubusercontent.com/yourusername/image-gallery/main/images/sunset-beach.jpg",
+    "alt": "A beautiful sunset at the beach"
+  },
+  {
+    "title": "Mountain View",
+    "url": "https://raw.githubusercontent.com/yourusername/image-gallery/main/images/mountain-view.jpg",
+    "alt": "Snowy mountain under blue sky"
+  }
+]
