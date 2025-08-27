@@ -152,15 +152,23 @@
     if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
     const data = await res.json();
 
+    const currentGroup = groupName || "others";
+    let hasImages = false;
+
     for (const item of data) {
       if (item.type === "file" && item.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-        const group = groupName || "others";
-        if (!groups[group]) groups[group] = [];
-        groups[group].push(item);
+        if (!groups[currentGroup]) groups[currentGroup] = [];
+        groups[currentGroup].push(item);
         allImages.push(item);
+        hasImages = true;
       } else if (item.type === "dir") {
-        await fetchFolderContents(config, `${path}/${item.name}`, item.name.toLowerCase());
+        await fetchFolderContents(config, `${path}/${item.name}`, item.name);
       }
+    }
+    
+    // Only add a button for a directory if it contains images directly or in its subdirectories.
+    if (hasImages && !groups[currentGroup].some(img => img.path.startsWith(`${path}/`))) {
+      createGroupButton(currentGroup);
     }
   }
 
@@ -190,35 +198,29 @@
     });
   }
 
+  function createGroupButton(groupName) {
+    const btn = document.createElement("button");
+    btn.className = "group-btn";
+    btn.textContent = `${groupName} (${groups[groupName].length})`;
+    btn.setAttribute("aria-label", `Show images in group ${groupName}`);
+    btn.onclick = () => showImages(groups[groupName]);
+    groupButtonsContainer.appendChild(btn);
+  }
+
   function createGroupButtons() {
     groupButtonsContainer.innerHTML = "";
     Object.keys(groups).forEach(group => {
-      const btn = document.createElement("button");
-      btn.className = "group-btn";
-      btn.textContent = `${group} (${groups[group].length})`;
-      btn.setAttribute("aria-label", `Show images in group ${group}`);
-      btn.onclick = () => showImages(groups[group]);
-      groupButtonsContainer.appendChild(btn);
+      createGroupButton(group);
     });
   }
 
   function filterGroups(term) {
     const safeTerm = sanitizeInput(term.toLowerCase());
-    const filtered = {};
-    Object.keys(groups).forEach(group => {
-      if (group.includes(safeTerm)) {
-        filtered[group] = groups[group];
-      }
-    });
-
     groupButtonsContainer.innerHTML = "";
-    Object.keys(filtered).forEach(group => {
-      const btn = document.createElement("button");
-      btn.className = "group-btn";
-      btn.textContent = `${group} (${filtered[group].length})`;
-      btn.setAttribute("aria-label", `Show images in group ${group}`);
-      btn.onclick = () => showImages(filtered[group]);
-      groupButtonsContainer.appendChild(btn);
+    Object.keys(groups).forEach(group => {
+      if (group.toLowerCase().includes(safeTerm)) {
+        createGroupButton(group);
+      }
     });
   }
 
