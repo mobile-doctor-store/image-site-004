@@ -8,12 +8,12 @@
   <meta name="keywords" content="mobile phone images, electronics gallery, iPhone pictures, Samsung phones, accessories" />
   <meta name="author" content="Mobile Doctor Store" />
   <title>Public Mobile Image Gallery</title>
-  <link rel="canonical" href="https://mobile-doctor-store.github.io/image-site-004/" />
+  <link rel="canonical" href="https://galery.mobiledoctor.org.in/" />
   <meta property="og:title" content="Mobile Image Gallery" />
   <meta property="og:description" content="Explore and download images of phones, electronics and accessories" />
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://mobile-doctor-store.github.io/image-site-004/" />
-  <meta property="og:image" content="https://mobile-doctor-store.github.io/image-site-004/images/sample.jpg" />
+  <meta property="og:url" content="https://galery.mobiledoctor.org.in/" />
+  <meta property="og:image" content="https://galery.mobiledoctor.org.in/images/sample.jpg" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -62,7 +62,7 @@
       background-color: var(--btn-bg);
       color: #fff;
       border: none;
-      border-radius: 5px;
+      border-radius: 5-px;
       font-size: 1rem;
       cursor: pointer;
       transition: background 0.2s;
@@ -146,29 +146,30 @@
   function fileNameToAlt(name) {
     return sanitizeInput(name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
   }
+  
+  // New function to extract category from filename
+  function getCategoryFromFilename(filename) {
+    // This regex looks for a sequence of letters at the start of the filename
+    // followed by a non-letter character (like a number, underscore, or hyphen).
+    const match = filename.match(/^([a-zA-Z]+)/);
+    return match ? match[1].toLowerCase() : "others";
+  }
 
-  async function fetchFolderContents(config, path = config.folder, groupName = "") {
+  async function fetchFolderContents(config, path = config.folder) {
     const res = await fetch(`https://api.github.com/repos/${config.username}/${config.repo}/contents/${encodeURIComponent(path)}`);
     if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
     const data = await res.json();
 
-    const currentGroup = groupName || "others";
-    let hasImages = false;
-
     for (const item of data) {
       if (item.type === "file" && item.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-        if (!groups[currentGroup]) groups[currentGroup] = [];
-        groups[currentGroup].push(item);
+        // Group images based on the filename prefix
+        const groupName = getCategoryFromFilename(item.name);
+        if (!groups[groupName]) groups[groupName] = [];
+        groups[groupName].push(item);
         allImages.push(item);
-        hasImages = true;
       } else if (item.type === "dir") {
-        await fetchFolderContents(config, `${path}/${item.name}`, item.name);
+        await fetchFolderContents(config, `${path}/${item.name}`);
       }
-    }
-    
-    // Only add a button for a directory if it contains images directly or in its subdirectories.
-    if (hasImages && !groups[currentGroup].some(img => img.path.startsWith(`${path}/`))) {
-      createGroupButton(currentGroup);
     }
   }
 
@@ -198,28 +199,29 @@
     });
   }
 
-  function createGroupButton(groupName) {
-    const btn = document.createElement("button");
-    btn.className = "group-btn";
-    btn.textContent = `${groupName} (${groups[groupName].length})`;
-    btn.setAttribute("aria-label", `Show images in group ${groupName}`);
-    btn.onclick = () => showImages(groups[groupName]);
-    groupButtonsContainer.appendChild(btn);
-  }
-
   function createGroupButtons() {
     groupButtonsContainer.innerHTML = "";
-    Object.keys(groups).forEach(group => {
-      createGroupButton(group);
+    Object.keys(groups).sort().forEach(group => {
+      const btn = document.createElement("button");
+      btn.className = "group-btn";
+      btn.textContent = `${group} (${groups[group].length})`;
+      btn.setAttribute("aria-label", `Show images in group ${group}`);
+      btn.onclick = () => showImages(groups[group]);
+      groupButtonsContainer.appendChild(btn);
     });
   }
 
   function filterGroups(term) {
     const safeTerm = sanitizeInput(term.toLowerCase());
     groupButtonsContainer.innerHTML = "";
-    Object.keys(groups).forEach(group => {
+    Object.keys(groups).sort().forEach(group => {
       if (group.toLowerCase().includes(safeTerm)) {
-        createGroupButton(group);
+        const btn = document.createElement("button");
+        btn.className = "group-btn";
+        btn.textContent = `${group} (${groups[group].length})`;
+        btn.setAttribute("aria-label", `Show images in group ${group}`);
+        btn.onclick = () => showImages(groups[group]);
+        groupButtonsContainer.appendChild(btn);
       }
     });
   }
