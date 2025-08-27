@@ -2,41 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="description" content="Public image gallery by Mobile Doctor Store">
+  <meta name="description" content="Auto-grouped image gallery from GitHub images">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Auto-Updating Image Gallery</title>
+  <title>Smart Image Gallery</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    #group-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .group-btn {
+      padding: 10px 15px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .group-btn:hover {
+      background-color: #0056b3;
+    }
+
+    #gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+    }
+
+    #gallery img {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+  </style>
 </head>
 <body>
-  <h1>Auto Image Gallery</h1>
-  <div id="gallery">Loading images...</div>
 
-  <script>
-    const username = "mobile-doctor-store";
-    const repo = "image-site-004";
-    const folder = "images";
+<h1>Smart Image Gallery</h1>
 
-    const gallery = document.getElementById("gallery");
+<div id="group-buttons">Loading groups...</div>
+<div id="gallery">Select a group to view images.</div>
+
+<script>
+  const username = "mobile-doctor-store";
+  const repo = "image-site-004";
+  const folder = "images";
+
+  const groupButtonsContainer = document.getElementById("group-buttons");
+  const gallery = document.getElementById("gallery");
+
+  function getPrefix(filename) {
+    // Match any starting letters until a number or space appears
+    const match = filename.match(/^[a-zA-Z]+/);
+    return match ? match[0].toLowerCase() : "others";
+  }
+
+  function clearGallery() {
     gallery.innerHTML = "";
+  }
 
-    fetch(`https://api.github.com/repos/${username}/${repo}/contents/${folder}`)
-      .then(response => response.json())
-      .then(files => {
-        files.forEach(file => {
-          if (file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-            const img = document.createElement("img");
-            img.src = file.download_url;
-            img.alt = file.name;
-            img.title = file.name;
-            img.style.width = "300px";
-            img.style.margin = "10px";
-            gallery.appendChild(img);
-          }
+  function createImageElement(url, name) {
+    const img = document.createElement("img");
+    img.src = url;
+    img.alt = name;
+    img.title = name;
+    img.loading = "lazy";
+    return img;
+  }
+
+  function createGroupButtons(groups, files) {
+    groupButtonsContainer.innerHTML = "";
+
+    Object.keys(groups).forEach(prefix => {
+      const button = document.createElement("button");
+      button.className = "group-btn";
+      button.innerText = `${prefix} (${groups[prefix].length})`;
+      button.addEventListener("click", () => {
+        clearGallery();
+        groups[prefix].forEach(file => {
+          const img = createImageElement(file.download_url, file.name);
+          gallery.appendChild(img);
         });
-      })
-      .catch(err => {
-        gallery.innerHTML = "<p>Error loading images.</p>";
-        console.error(err);
       });
-  </script>
+      groupButtonsContainer.appendChild(button);
+    });
+  }
+
+  fetch(`https://api.github.com/repos/${username}/${repo}/contents/${folder}`)
+    .then(response => response.json())
+    .then(files => {
+      const imageFiles = files.filter(file =>
+        file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+      );
+
+      const groups = {};
+
+      imageFiles.forEach(file => {
+        const prefix = getPrefix(file.name);
+        if (!groups[prefix]) {
+          groups[prefix] = [];
+        }
+        groups[prefix].push(file);
+      });
+
+      if (Object.keys(groups).length > 0) {
+        createGroupButtons(groups, imageFiles);
+      } else {
+        groupButtonsContainer.innerHTML = "<p>No image groups found.</p>";
+      }
+    })
+    .catch(err => {
+      groupButtonsContainer.innerHTML = "<p>Error loading image groups.</p>";
+      console.error(err);
+    });
+</script>
+
 </body>
 </html>
