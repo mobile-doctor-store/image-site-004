@@ -1,11 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="description" content="Responsive Secure Image Gallery">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Gallery</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="description" content="Public image gallery showing phones, accessories, and electronics" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <meta name="keywords" content="mobile phone images, electronics gallery, iPhone pictures, Samsung phones, accessories" />
+  <meta name="author" content="Mobile Doctor Store" />
+  <title>Public Mobile Image Gallery</title>
+  <link rel="canonical" href="https://mobile-doctor-store.github.io/image-site-004/" />
+  <meta property="og:title" content="Mobile Image Gallery" />
+  <meta property="og:description" content="Explore and download images of phones, electronics and accessories" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mobile-doctor-store.github.io/image-site-004/" />
+  <meta property="og:image" content="https://mobile-doctor-store.github.io/image-site-004/images/sample.jpg" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #f4f4f4;
@@ -13,7 +22,6 @@
       --btn-bg: #007bff;
       --btn-hover: #0056b3;
     }
-
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #121212;
@@ -22,7 +30,6 @@
         --btn-hover: #1565c0;
       }
     }
-
     body {
       font-family: 'Inter', sans-serif;
       margin: 0;
@@ -30,13 +37,11 @@
       background-color: var(--bg);
       color: var(--text);
     }
-
     h1 {
       text-align: center;
       font-size: 2em;
       margin-bottom: 20px;
     }
-
     #controls {
       display: flex;
       flex-wrap: wrap;
@@ -44,7 +49,6 @@
       gap: 10px;
       margin-bottom: 20px;
     }
-
     #search {
       padding: 10px;
       min-width: 200px;
@@ -53,7 +57,6 @@
       border-radius: 5px;
       font-size: 1rem;
     }
-
     .group-btn {
       padding: 10px 15px;
       background-color: var(--btn-bg);
@@ -64,17 +67,14 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-
     .group-btn:hover {
       background-color: var(--btn-hover);
     }
-
     #gallery {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 15px;
     }
-
     #gallery img {
       width: 100%;
       height: auto;
@@ -83,11 +83,9 @@
       cursor: pointer;
       transition: transform 0.2s ease;
     }
-
     #gallery img:hover {
       transform: scale(1.02);
     }
-
     #lightbox {
       position: fixed;
       top: 0; left: 0;
@@ -99,18 +97,15 @@
       align-items: center;
       z-index: 1000;
     }
-
     #lightbox img {
       max-width: 95%;
       max-height: 95%;
       border-radius: 10px;
     }
-
     @media (max-width: 600px) {
       #search, .group-btn {
         width: 100%;
       }
-
       h1 {
         font-size: 1.5em;
       }
@@ -119,18 +114,18 @@
 </head>
 <body>
 
-<h1>Secure Image Gallery</h1>
+<h1>Public Mobile Image Gallery</h1>
 
 <div id="controls">
-  <input type="text" id="search" placeholder="Search groups...">
-  <button class="group-btn" id="all-btn">Show All</button>
-  <div id="group-buttons"></div>
+  <input type="text" id="search" placeholder="Search groups..." aria-label="Search image groups" />
+  <button class="group-btn" id="all-btn" aria-label="Show all images">Show All</button>
+  <nav id="group-buttons" role="navigation" aria-label="Image groups"></nav>
 </div>
 
-<div id="gallery">Loading images...</div>
+<div id="gallery" aria-live="polite" aria-busy="true">Loading images...</div>
 
-<div id="lightbox" onclick="this.style.display='none'">
-  <img id="lightbox-img" src="" alt="Preview">
+<div id="lightbox" role="dialog" aria-modal="true" aria-labelledby="lightbox-img">
+  <img id="lightbox-img" src="" alt="Preview" />
 </div>
 
 <script>
@@ -148,8 +143,13 @@
     return str.replace(/[<>\/"'&]/g, "");
   }
 
+  function fileNameToAlt(name) {
+    return sanitizeInput(name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " "));
+  }
+
   async function fetchFolderContents(config, path = config.folder, groupName = "") {
-    const res = await fetch(`https://api.github.com/repos/${config.username}/${config.repo}/contents/${path}`);
+    const res = await fetch(`https://api.github.com/repos/${config.username}/${config.repo}/contents/${encodeURIComponent(path)}`);
+    if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
     const data = await res.json();
 
     for (const item of data) {
@@ -178,13 +178,13 @@
     images.forEach(file => {
       const img = document.createElement("img");
       img.src = file.download_url;
-      img.alt = sanitizeInput(file.name);
-      img.title = sanitizeInput(file.name);
+      img.alt = fileNameToAlt(file.name);
+      img.title = img.alt;
       img.loading = "lazy";
       img.onclick = () => {
         lightbox.style.display = "flex";
         lightboxImg.src = file.download_url;
-        lightboxImg.alt = file.name;
+        lightboxImg.alt = img.alt;
       };
       gallery.appendChild(img);
     });
@@ -196,6 +196,7 @@
       const btn = document.createElement("button");
       btn.className = "group-btn";
       btn.textContent = `${group} (${groups[group].length})`;
+      btn.setAttribute("aria-label", `Show images in group ${group}`);
       btn.onclick = () => showImages(groups[group]);
       groupButtonsContainer.appendChild(btn);
     });
@@ -215,6 +216,7 @@
       const btn = document.createElement("button");
       btn.className = "group-btn";
       btn.textContent = `${group} (${filtered[group].length})`;
+      btn.setAttribute("aria-label", `Show images in group ${group}`);
       btn.onclick = () => showImages(filtered[group]);
       groupButtonsContainer.appendChild(btn);
     });
@@ -222,8 +224,7 @@
 
   allBtn.onclick = () => showImages(allImages);
   searchInput.addEventListener("input", () => {
-    const input = sanitizeInput(searchInput.value);
-    filterGroups(input);
+    filterGroups(searchInput.value);
   });
 
   document.addEventListener("keydown", e => {
@@ -233,11 +234,13 @@
   async function init() {
     try {
       const configRes = await fetch("config.json");
+      if (!configRes.ok) throw new Error("Config file not found");
       const config = await configRes.json();
 
       await fetchFolderContents(config);
       createGroupButtons();
       gallery.innerHTML = "<p>Select a group or click 'Show All'.</p>";
+      gallery.setAttribute("aria-busy", "false");
     } catch (err) {
       gallery.textContent = "Error loading images.";
       console.error(err);
